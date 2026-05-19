@@ -14,6 +14,7 @@ import (
 type Repository interface {
 	Create(ctx context.Context, user *User) error
 	FindByEmail(ctx context.Context, email string) (*User, error)
+	FindByID(ctx context.Context, userID string) (*User, error)
 }
 
 type repository struct{}
@@ -57,6 +58,30 @@ func (r *repository) FindByEmail(
 		Collection(r.collection()).
 		FindOne(ctx, bson.M{
 			"email": email,
+		}).
+		Decode(&user)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &user, nil
+}
+
+func (r *repository) FindByID(
+	ctx context.Context,
+	userID string,
+) (*User, error) {
+	var user User
+	objID, err := primitive.ObjectIDFromHex(userID)
+	if err != nil {
+		return nil, err
+	}
+
+	err = database.DB.
+		Collection(r.collection()).
+		FindOne(ctx, bson.M{
+			"_id": objID,
 		}).
 		Decode(&user)
 

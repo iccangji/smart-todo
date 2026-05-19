@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"golang.org/x/crypto/bcrypt"
@@ -17,6 +18,10 @@ type Service interface {
 		ctx context.Context,
 		req LoginRequest,
 	) (string, string, error)
+	Refresh(
+		ctx context.Context,
+		refreshToken string,
+	) (string, error)
 }
 
 type service struct {
@@ -108,4 +113,28 @@ func (s *service) Login(
 	}
 
 	return accessToken, refreshToken, nil
+}
+
+func (s *service) Refresh(
+	ctx context.Context,
+	refreshToken string,
+) (string, error) {
+
+	claims, err := ParseRefreshToken(refreshToken)
+	if err != nil {
+		return "", errors.New("invalid refresh token")
+	}
+
+	user, err := s.repository.FindByID(ctx, claims.UserID)
+	fmt.Println(claims.UserID)
+	if err != nil {
+		return "", errors.New("user not found")
+	}
+
+	accessToken, err := GenerateAccessToken(*user)
+	if err != nil {
+		return "", err
+	}
+
+	return accessToken, nil
 }
