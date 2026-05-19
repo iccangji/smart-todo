@@ -53,12 +53,16 @@ func (r *repository) FindAll(
 		Collection(r.collection())
 
 	filter := bson.M{}
-
 	// Filter by search
 	if query.Search != "" {
-		filter["title"] = bson.M{
-			"regex":    query.Search,
+		searchRegex := bson.M{
+			"$regex":   query.Search,
 			"$options": "i",
+		}
+
+		filter["$or"] = []bson.M{
+			{"title": searchRegex},
+			{"description": searchRegex},
 		}
 	}
 
