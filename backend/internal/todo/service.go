@@ -8,7 +8,7 @@ import (
 
 type Service interface {
 	Create(ctx context.Context, req CreateTodoRequest) (*Todo, error)
-	GetAll(ctx context.Context) ([]Todo, error)
+	GetAll(ctx context.Context, query GetTodosQuery) ([]Todo, int64, error)
 	GetByID(ctx context.Context, id string) (*Todo, error)
 	Update(ctx context.Context, id string, req UpdateTodoRequest) (*Todo, error)
 	Delete(ctx context.Context, id string) error
@@ -34,8 +34,8 @@ func (s *service) Create(ctx context.Context, req CreateTodoRequest) (*Todo, err
 	return s.repository.Create(ctx, todo)
 }
 
-func (s *service) GetAll(ctx context.Context) ([]Todo, error) {
-	return s.repository.FindAll(ctx)
+func (s *service) GetAll(ctx context.Context, filter GetTodosQuery) ([]Todo, int64, error) {
+	return s.repository.FindAll(ctx, filter)
 }
 
 func (s *service) GetByID(ctx context.Context, id string) (*Todo, error) {

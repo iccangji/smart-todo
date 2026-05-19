@@ -1,6 +1,7 @@
 package todo
 
 import (
+	"math"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -37,14 +38,31 @@ func (h *Handler) Create(c *gin.Context) {
 }
 
 func (h *Handler) GetAll(c *gin.Context) {
-	todos, err := h.service.GetAll(c.Request.Context())
+	var query GetTodosQuery
+	query.Normalize()
+
+	if err := c.ShouldBind(&query); err != nil {
+		response.Error(c, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	todos, total, err := h.service.GetAll(c.Request.Context(), query)
+	totalPages := int(math.Ceil(float64(total) / float64(query.Limit)))
 
 	if err != nil {
 		response.Error(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	response.SuccessWithData(c, http.StatusOK, todos)
+	response.SucessWithPagination(c, http.StatusOK, response.PaginatedResponse{
+		Data: todos,
+		Meta: response.Meta{
+			Page:       query.Page,
+			Limit:      query.Limit,
+			Total:      int(total),
+			TotalPages: totalPages,
+		},
+	})
 }
 
 func (h *Handler) GetByID(c *gin.Context) {
