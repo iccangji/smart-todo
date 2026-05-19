@@ -4,10 +4,12 @@ import (
 	"backend/internal/utils"
 	"context"
 	"errors"
+
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type Service interface {
-	Create(ctx context.Context, req CreateTodoRequest) (*Todo, error)
+	Create(ctx context.Context, userID string, req CreateTodoRequest) (*Todo, error)
 	GetAll(ctx context.Context, query GetTodosQuery) ([]Todo, int64, error)
 	GetByID(ctx context.Context, id string) (*Todo, error)
 	Update(ctx context.Context, id string, req UpdateTodoRequest) (*Todo, error)
@@ -24,11 +26,22 @@ func NewService(repository Repository) Service {
 	}
 }
 
-func (s *service) Create(ctx context.Context, req CreateTodoRequest) (*Todo, error) {
+func (s *service) Create(
+	ctx context.Context,
+	userID string,
+	req CreateTodoRequest,
+) (*Todo, error) {
+
+	userObjectID, err := primitive.ObjectIDFromHex(userID)
+	if err != nil {
+		return nil, err
+	}
+
 	todo := &Todo{
 		Title:       req.Title,
 		Description: req.Description,
 		Completed:   false,
+		UserID:      userObjectID,
 	}
 
 	return s.repository.Create(ctx, todo)

@@ -18,6 +18,12 @@ func StructToBsonM(input any) bson.M {
 
 	typ := val.Type()
 
+	// Ignored fields to map
+	ignoredFields := map[string]bool{
+		"user_id": true,
+		"_id":     true,
+	}
+
 	for i := 0; i < val.NumField(); i++ {
 		field := val.Field(i)
 		structField := typ.Field(i)
@@ -35,6 +41,10 @@ func StructToBsonM(input any) bson.M {
 		}
 
 		if field.Kind() == reflect.Ptr && field.IsNil() {
+			continue
+		}
+
+		if ignoredFields[key] {
 			continue
 		}
 

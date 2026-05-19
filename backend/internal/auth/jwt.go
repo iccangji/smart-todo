@@ -1,0 +1,50 @@
+package auth
+
+import (
+	"os"
+	"time"
+
+	"github.com/golang-jwt/jwt/v5"
+)
+
+type JWTClaims struct {
+	UserID string `json:"user_id"`
+	Email  string `json:"email"`
+	jwt.RegisteredClaims
+}
+
+func GenerateAccessToken(user User) (string, error) {
+	expire := time.Now().Add(15 * time.Minute) // Expiration 15 minutes
+
+	claims := JWTClaims{
+		UserID: user.ID.Hex(),
+		Email:  user.Email,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(expire),
+		},
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+
+	return token.SignedString(
+		[]byte(os.Getenv("JWT_ACCESS_SECRET")),
+	)
+}
+
+func GenerateRefreshToken(user User) (string, error) {
+	expire := time.Now().Add(7 * 24 * time.Hour) // Expiration 7 days
+
+	claims := JWTClaims{
+		UserID: user.ID.Hex(),
+		Email:  user.Email,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(expire),
+		},
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+
+	return token.SignedString(
+		[]byte(os.Getenv("JWT_REFRESH_SECRET")),
+	)
+}

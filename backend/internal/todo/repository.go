@@ -67,9 +67,16 @@ func (r *repository) FindAll(
 		filter["completed"] = *query.Completed
 	}
 
-	// Set order by filter
+	// Set sort and order by filter
 	skip := (query.Page - 1) * query.Limit
+	sortField := query.Sort
 	sortOrder := -1
+
+	// Sort updated_at as default
+	if sortField == "" {
+		sortField = "updated_at"
+	}
+
 	if strings.ToLower(query.Order) == "asc" {
 		sortOrder = 1
 	}
@@ -77,8 +84,8 @@ func (r *repository) FindAll(
 	opts := options.Find()
 	opts.SetSkip(int64(skip))
 	opts.SetLimit(int64(query.Limit))
-	opts.SetSort(bson.M{
-		query.Sort: sortOrder,
+	opts.SetSort(bson.D{
+		{Key: sortField, Value: sortOrder},
 	})
 
 	// Get collections
@@ -138,7 +145,6 @@ func (r *repository) Update(ctx context.Context, id string, payload bson.M) (*To
 	if err != nil {
 		return nil, err
 	}
-
 	payload["updated_at"] = time.Now()
 	after := options.After
 	var updated Todo

@@ -27,7 +27,7 @@ func (h *Handler) Create(c *gin.Context) {
 		return
 	}
 
-	todo, err := h.service.Create(c.Request.Context(), req)
+	todo, err := h.service.Create(c.Request.Context(), c.GetString("user_id"), req)
 
 	if err != nil {
 		response.Error(c, http.StatusInternalServerError, err.Error())
