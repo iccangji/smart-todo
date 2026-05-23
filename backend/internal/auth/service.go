@@ -3,7 +3,6 @@ package auth
 import (
 	"context"
 	"errors"
-	"fmt"
 	"time"
 
 	"golang.org/x/crypto/bcrypt"
@@ -126,7 +125,6 @@ func (s *service) Refresh(
 	}
 
 	user, err := s.repository.FindByID(ctx, claims.UserID)
-	fmt.Println(claims.UserID)
 	if err != nil {
 		return "", errors.New("user not found")
 	}
