@@ -1,6 +1,7 @@
 package todo
 
 import (
+	"fmt"
 	"math"
 	"net/http"
 
@@ -113,15 +114,42 @@ func (h *Handler) Delete(c *gin.Context) {
 
 func (h *Handler) Breakdown(c *gin.Context) {
 	id := c.Param("id")
-	result, err := h.service.BreakdownTask(
-		c.Request.Context(),
-		id,
+	c.Writer.Header().Set(
+		"Content-Type",
+		"text/event-stream",
 	)
 
-	if err != nil {
-		response.Error(c, http.StatusInternalServerError, err.Error())
+	c.Writer.Header().Set(
+		"Cache-Control",
+		"no-cache",
+	)
+
+	c.Writer.Header().Set(
+		"Connection",
+		"keep-alive",
+	)
+	flusher, ok := c.Writer.(http.Flusher)
+
+	if !ok {
+		response.Error(c, http.StatusInternalServerError, "stream unsupported")
 		return
 	}
 
-	response.SuccessWithData(c, http.StatusOK, result)
+	err := h.service.BreakdownTask(
+		c.Request.Context(),
+		id,
+		c.Writer,
+		flusher,
+	)
+
+	if err != nil {
+
+		fmt.Fprintf(
+			c.Writer,
+			"data: error: %s\n\n",
+			err.Error(),
+		)
+
+		flusher.Flush()
+	}
 }

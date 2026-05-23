@@ -10,8 +10,3 @@ type UpdateTodoRequest struct {
 	Description *string `json:"description"`
 	Completed   *bool   `json:"completed"`
 }
-
-type BreakdownResponse struct {
-	Title string   `json:"title"`
-	Steps []string `json:"steps"`
-}

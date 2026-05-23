@@ -12,6 +12,7 @@ type Todo struct {
 	Description string             `bson:"description" json:"description"`
 	Completed   bool               `bson:"completed" json:"completed"`
 	UserID      primitive.ObjectID `bson:"user_id" json:"user_id"`
+	Breakdown   []string           `bson:"breakdown,omitempty" json:"breakdown"`
 	CreatedAt   time.Time          `bson:"created_at" json:"created_at"`
 	UpdatedAt   time.Time          `bson:"updated_at" json:"updated_at"`
 }
