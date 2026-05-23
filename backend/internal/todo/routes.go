@@ -17,6 +17,7 @@ func RegisterRoutes(r *gin.Engine) {
 		api.POST("", handler.Create)
 		api.GET("", handler.GetAll)
 		api.GET("/:id", handler.GetByID)
+		api.GET("/:id/breakdown", handler.Breakdown)
 		api.PUT("/:id", handler.Update)
 		api.DELETE("/:id", handler.Delete)
 	}

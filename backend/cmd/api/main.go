@@ -4,6 +4,7 @@ import (
 	"os"
 
 	"backend/internal/auth"
+	"backend/internal/dashboard"
 	"backend/internal/database"
 	"backend/internal/todo"
 
@@ -15,6 +16,7 @@ func main() {
 	r := gin.Default()
 	todo.RegisterRoutes(r)
 	auth.RegisterRoutes(r)
+	dashboard.RegisterRoutes(r)
 	port := os.Getenv("APP_PORT")
 	r.Run(":" + port)
 }

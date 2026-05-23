@@ -110,3 +110,18 @@ func (h *Handler) Delete(c *gin.Context) {
 
 	response.SuccessWithMessage(c, http.StatusOK, "Todo deleted")
 }
+
+func (h *Handler) Breakdown(c *gin.Context) {
+	id := c.Param("id")
+	result, err := h.service.BreakdownTask(
+		c.Request.Context(),
+		id,
+	)
+
+	if err != nil {
+		response.Error(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	response.SuccessWithData(c, http.StatusOK, result)
+}
