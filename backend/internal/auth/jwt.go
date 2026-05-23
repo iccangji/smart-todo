@@ -15,7 +15,7 @@ type JWTClaims struct {
 }
 
 func GenerateAccessToken(user User) (string, error) {
-	expire := time.Now().Add(15 * time.Minute) // Expiration 15 minutes
+	expire := time.Now().Add(60 * time.Minute) // Expiration 60 minutes
 
 	claims := JWTClaims{
 		UserID: user.ID.Hex(),
