@@ -132,29 +132,16 @@ func (s *service) BreakdownTask(
 
 	jsonData, _ := json.MarshalIndent(todo, "", "  ")
 
-	prompt := fmt.Sprintf(`
-You are a productivity assistant.
-
-Break down the given todo into high-level, general, and practical actionable steps.
-
-Important rules:
-- Do NOT assume hidden or private context not present in the data.
-- If the todo is ambiguous, keep breakdown generic and widely applicable.
-- Focus on logical execution steps that most users would understand.
-- Do NOT over-engineer or add unnecessary technical detail.
-- Return 3 to 6 bullet points only.
-- Each bullet must be a single actionable step.
-- No explanations.
-Todo data:
-%s
-
-Return only bullet points.
-`, string(jsonData))
-
 	var result []string
-	ai.StreamResponse(prompt, writer, flusher, func(content string) {
-		result = append(result, strings.TrimSpace(content))
-	})
+	ai.StreamResponse(
+		ai.Breakdown,
+		jsonData,
+		writer,
+		flusher,
+		func(content string) {
+			result = append(result, strings.TrimSpace(content))
+		},
+	)
 
 	todo.Breakdown = result
 

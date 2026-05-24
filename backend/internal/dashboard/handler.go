@@ -2,6 +2,7 @@ package dashboard
 
 import (
 	"backend/internal/response"
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -52,4 +53,46 @@ func (h *Handler) GetTodosPerDay(c *gin.Context) {
 	}
 
 	response.SuccessWithData(c, http.StatusOK, data)
+}
+
+func (h *Handler) Summarize(c *gin.Context) {
+	userID := c.GetString("user_id")
+	c.Writer.Header().Set(
+		"Content-Type",
+		"text/event-stream",
+	)
+
+	c.Writer.Header().Set(
+		"Cache-Control",
+		"no-cache",
+	)
+
+	c.Writer.Header().Set(
+		"Connection",
+		"keep-alive",
+	)
+
+	flusher, ok := c.Writer.(http.Flusher)
+
+	if !ok {
+		response.Error(c, http.StatusInternalServerError, "stream unsupported")
+		return
+	}
+
+	err := h.service.Summarize(
+		c.Request.Context(),
+		userID,
+		c.Writer,
+		flusher,
+	)
+
+	if err != nil {
+		fmt.Fprintf(
+			c.Writer,
+			"data: error: %s\n\n",
+			err.Error(),
+		)
+
+		flusher.Flush()
+	}
 }

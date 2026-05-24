@@ -11,32 +11,14 @@ import (
 	"strings"
 )
 
-type StreamChunk struct {
-	Choices []struct {
-		Delta struct {
-			Content string `json:"content"`
-		} `json:"delta"`
-	} `json:"choices"`
-}
-
-type Message struct {
-	Role    string `json:"role"`
-	Content string `json:"content"`
-}
-
-type OpenRouterRequest struct {
-	Model    string    `json:"model"`
-	Messages []Message `json:"messages"`
-	Stream   bool      `json:"stream"`
-}
-
 func StreamResponse(
-	prompt string,
+	feature AiFeatures,
+	data []byte,
 	writer io.Writer,
 	flusher http.Flusher,
 	onData func(string),
 ) error {
-
+	prompt := GeneratePrompt(feature, string(data))
 	body := OpenRouterRequest{
 		Model:  os.Getenv("OPENROUTER_MODEL"),
 		Stream: true,
@@ -85,8 +67,8 @@ func StreamResponse(
 	var buffer strings.Builder
 
 	for scanner.Scan() {
-
 		line := scanner.Text()
+		fmt.Printf("[RAW] %s\n", line)
 
 		if !strings.HasPrefix(line, "data: ") {
 			continue
@@ -125,25 +107,30 @@ func StreamResponse(
 			continue
 		}
 
-		buffer.WriteString(content)
+		if feature == Breakdown {
+			buffer.WriteString(content)
+			text := buffer.String()
 
-		text := buffer.String()
+			if strings.Contains(text, "\n") {
 
-		if strings.Contains(text, "\n") {
+				fmt.Fprintf(writer, "data: %s\n\n", strings.TrimSpace(text))
+				flusher.Flush()
 
-			fmt.Fprintf(
-				writer,
-				"data: %s\n\n",
-				strings.TrimSpace(text),
-			)
+				if onData != nil {
+					onData(strings.TrimSpace(text))
+				}
 
+				buffer.Reset()
+			}
+		} else {
+			fmt.Fprintf(writer, "data: %s\n\n", content)
 			flusher.Flush()
 
 			if onData != nil {
-				onData(strings.TrimSpace(text))
+				onData(content)
 			}
 
-			buffer.Reset()
+			continue
 		}
 	}
 
