@@ -10,6 +10,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -57,6 +58,7 @@ func (s *service) Create(
 		Description: req.Description,
 		Completed:   false,
 		UserID:      userObjectID,
+		Priority:    req.Priority,
 	}
 
 	return s.repository.Create(ctx, todo)
@@ -75,6 +77,30 @@ func (s *service) Update(ctx context.Context, id string, req UpdateTodoRequest) 
 
 	if len(payload) == 0 {
 		return nil, errors.New("no fields to update")
+	}
+	if payload["priority"] != nil {
+		switch payload["priority"] {
+		case Low, Medium, High, Urgent:
+		default:
+			return nil, errors.New("invalid priority")
+		}
+	}
+
+	if title, ok := utils.GetString(payload, "title"); ok {
+		payload["title"] = title
+	}
+
+	if desc, ok := utils.GetString(payload, "description"); ok {
+		payload["description"] = desc
+	}
+
+	if completed, ok := utils.GetBool(payload, "completed"); ok {
+		payload["completed"] = completed
+		if completed {
+			payload["completed_at"] = time.Now()
+		} else {
+			payload["completed_at"] = nil
+		}
 	}
 
 	return s.repository.Update(ctx, id, payload)

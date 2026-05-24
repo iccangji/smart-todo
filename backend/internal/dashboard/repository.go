@@ -3,6 +3,7 @@ package dashboard
 import (
 	"backend/internal/database"
 	"context"
+	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -21,6 +22,21 @@ func NewRepository() Repository {
 func (r *repository) GetSummary(
 	ctx context.Context,
 ) (*SummaryResponse, error) {
+	now := time.Now()
+
+	startOfDay := time.Date(
+		now.Year(),
+		now.Month(),
+		now.Day(),
+		0, 0, 0, 0,
+		now.Location(),
+	)
+
+	startOfWeek := startOfDay.AddDate(
+		0,
+		0,
+		-int(now.Weekday()),
+	)
 	collection := database.DB.Collection("todos")
 	pipeline := []bson.M{
 		{
@@ -35,6 +51,166 @@ func (r *repository) GetSummary(
 					"$sum": bson.M{
 						"$cond": []interface{}{
 							"$completed",
+							1,
+							0,
+						},
+					},
+				},
+
+				"pending": bson.M{
+					"$sum": bson.M{
+						"$cond": []interface{}{
+							bson.M{
+								"$eq": []interface{}{
+									"$completed",
+									false,
+								},
+							},
+							1,
+							0,
+						},
+					},
+				},
+				"pending_low_priority": bson.M{
+					"$sum": bson.M{
+						"$cond": []interface{}{
+							bson.M{
+								"$and": []interface{}{
+									bson.M{
+										"$eq": []interface{}{
+											"$completed",
+											false,
+										},
+									},
+									bson.M{
+										"$eq": []interface{}{
+											"$priority",
+											0,
+										},
+									},
+								},
+							},
+							1,
+							0,
+						},
+					},
+				},
+				"pending_medium_priority": bson.M{
+					"$sum": bson.M{
+						"$cond": []interface{}{
+							bson.M{
+								"$and": []interface{}{
+									bson.M{
+										"$eq": []interface{}{
+											"$completed",
+											false,
+										},
+									},
+									bson.M{
+										"$eq": []interface{}{
+											"$priority",
+											1,
+										},
+									},
+								},
+							},
+							1,
+							0,
+						},
+					},
+				},
+				"pending_high_priority": bson.M{
+					"$sum": bson.M{
+						"$cond": []interface{}{
+							bson.M{
+								"$and": []interface{}{
+									bson.M{
+										"$eq": []interface{}{
+											"$completed",
+											false,
+										},
+									},
+									bson.M{
+										"$eq": []interface{}{
+											"$priority",
+											2,
+										},
+									},
+								},
+							},
+							1,
+							0,
+						},
+					},
+				},
+				"pending_urgent_priority": bson.M{
+					"$sum": bson.M{
+						"$cond": []interface{}{
+							bson.M{
+								"$and": []interface{}{
+									bson.M{
+										"$eq": []interface{}{
+											"$completed",
+											false,
+										},
+									},
+									bson.M{
+										"$eq": []interface{}{
+											"$priority",
+											3,
+										},
+									},
+								},
+							},
+							1,
+							0,
+						},
+					},
+				},
+
+				"completed_today": bson.M{
+					"$sum": bson.M{
+						"$cond": []interface{}{
+							bson.M{
+								"$and": []interface{}{
+									bson.M{
+										"$eq": []interface{}{
+											"$completed",
+											true,
+										},
+									},
+									bson.M{
+										"$gte": []interface{}{
+											"$completed_at",
+											startOfDay,
+										},
+									},
+								},
+							},
+							1,
+							0,
+						},
+					},
+				},
+				"completed_this_week": bson.M{
+					"$sum": bson.M{
+						"$cond": []interface{}{
+							bson.M{
+								"$and": []interface{}{
+									bson.M{
+										"$eq": []interface{}{
+											"$completed",
+											true,
+										},
+									},
+									bson.M{
+										"$gte": []interface{}{
+											"$completed_at",
+											startOfWeek,
+										},
+									},
+								},
+							},
 							1,
 							0,
 						},
@@ -69,7 +245,16 @@ func (r *repository) GetSummary(
 	total := data["total"].(int32)
 	completed := data["completed"].(int32)
 
-	pending := total - completed
+	pendingCount := total - completed
+	pendingTasks := Pending{
+		Low:    data["pending_low_priority"].(int32),
+		Medium: data["pending_medium_priority"].(int32),
+		High:   data["pending_high_priority"].(int32),
+		Urgent: data["pending_urgent_priority"].(int32),
+	}
+
+	completedToday := data["completed_today"].(int32)
+	completedThisWeek := data["completed_this_week"].(int32)
 
 	var completionRate float64
 
@@ -78,10 +263,13 @@ func (r *repository) GetSummary(
 	}
 
 	return &SummaryResponse{
-		Total:          total,
-		Completed:      completed,
-		Pending:        pending,
-		CompletionRate: completionRate,
+		Total:                total,
+		CompletedCount:       completed,
+		PendingCount:         pendingCount,
+		PendingPriorityCount: pendingTasks,
+		CompletionRate:       completionRate,
+		CompletedToday:       completedToday,
+		CompletedThisWeek:    completedThisWeek,
 	}, nil
 }
 
