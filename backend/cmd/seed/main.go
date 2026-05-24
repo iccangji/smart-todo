@@ -55,17 +55,19 @@ func main() {
 	var docs []interface{}
 
 	// Seed for 100 todos
-	for i := 0; i < 100; i++ {
+	for i := 0; i < 20; i++ {
 
 		randomUser := userIDs[gofakeit.Number(0, len(userIDs)-1)]
 
 		docs = append(docs, todo.Todo{
 			Title:       gofakeit.Sentence(3),
 			Description: gofakeit.Paragraph(1, 3, 5, " "),
-			Completed:   gofakeit.Bool(),
+			Completed:   false,
+			Priority:    todo.Priority((gofakeit.Number(0, 3))),
 			UserID:      randomUser,
-			CreatedAt:   randomTime(),
-			UpdatedAt:   time.Now(),
+
+			CreatedAt: randomTime(),
+			UpdatedAt: time.Now(),
 		})
 	}
 
