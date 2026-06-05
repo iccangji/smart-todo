@@ -56,7 +56,6 @@ func (h *Handler) GetTodosPerDay(c *gin.Context) {
 }
 
 func (h *Handler) Summarize(c *gin.Context) {
-	userID := c.GetString("user_id")
 	c.Writer.Header().Set(
 		"Content-Type",
 		"text/event-stream",
@@ -81,7 +80,6 @@ func (h *Handler) Summarize(c *gin.Context) {
 
 	err := h.service.Summarize(
 		c.Request.Context(),
-		userID,
 		c.Writer,
 		flusher,
 	)

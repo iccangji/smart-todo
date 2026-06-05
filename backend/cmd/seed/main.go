@@ -3,10 +3,11 @@ package main
 import (
 	"context"
 	"log"
+	"os"
 	"time"
 
-	"backend/internal/database"
-	"backend/internal/todo"
+	"backend/internal/infra/database"
+	"backend/internal/modules/todo"
 
 	"github.com/brianvoe/gofakeit/v7"
 	"go.mongodb.org/mongo-driver/bson"
@@ -14,8 +15,13 @@ import (
 )
 
 func getUsers(ctx context.Context) ([]primitive.ObjectID, error) {
-	collection := database.DB.Collection("users")
-
+	uri := os.Getenv("MONGO_URI")
+	dbName := os.Getenv("MONGO_DB")
+	db, err := database.ConnectMongo(ctx, uri, dbName)
+	if err != nil {
+		log.Fatal(err)
+	}
+	collection := db.Collection("users")
 	cursor, err := collection.Find(ctx, bson.M{})
 	if err != nil {
 		return nil, err
@@ -37,9 +43,16 @@ func getUsers(ctx context.Context) ([]primitive.ObjectID, error) {
 }
 
 func main() {
-	database.ConnectMongo()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 
-	ctx := context.Background()
+	// Init Database
+	uri := os.Getenv("MONGO_URI")
+	dbName := os.Getenv("MONGO_DB")
+	db, err := database.ConnectMongo(ctx, uri, dbName)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	userIDs, err := getUsers(ctx)
 	if err != nil {
@@ -50,7 +63,7 @@ func main() {
 		log.Fatal("no users found, create users first")
 	}
 
-	collection := database.DB.Collection("todos")
+	collection := db.Collection("todos")
 
 	var docs []interface{}
 

@@ -2,6 +2,7 @@ package todo
 
 import (
 	"backend/internal/ai"
+	"backend/internal/infra/cache"
 	"backend/internal/utils"
 	"context"
 	"encoding/json"
@@ -12,9 +13,10 @@ import (
 	"strings"
 	"time"
 
-	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
+
+const summaryCacheKey = "todos-summary"
 
 type Service interface {
 	Create(ctx context.Context, userID string, req CreateTodoRequest) (*Todo, error)
@@ -34,11 +36,13 @@ type Service interface {
 
 type service struct {
 	repository Repository
+	cache      cache.Cache
 }
 
-func NewService(repository Repository) Service {
+func NewService(repository Repository, cache cache.Cache) Service {
 	return &service{
 		repository: repository,
+		cache:      cache,
 	}
 }
 
@@ -61,6 +65,7 @@ func (s *service) Create(
 		Priority:    req.Priority,
 	}
 
+	s.cache.Delete(ctx, summaryCacheKey)
 	return s.repository.Create(ctx, todo)
 }
 
@@ -103,10 +108,14 @@ func (s *service) Update(ctx context.Context, id string, req UpdateTodoRequest) 
 		}
 	}
 
+	s.cache.Delete(ctx, fmt.Sprintf("todo-%s", id))
+	s.cache.Delete(ctx, summaryCacheKey)
 	return s.repository.Update(ctx, id, payload)
 }
 
 func (s *service) Delete(ctx context.Context, id string) error {
+	s.cache.Delete(ctx, fmt.Sprintf("todo-%s", id))
+	s.cache.Delete(ctx, summaryCacheKey)
 	return s.repository.Delete(ctx, id)
 }
 
@@ -116,18 +125,17 @@ func (s *service) BreakdownTask(
 	writer io.Writer,
 	flusher http.Flusher,
 ) error {
-	todo, err := s.repository.FindByID(ctx, todoID)
-	if err != nil {
-		return err
-	}
-
-	// Stream from database cache
-	if len(todo.Breakdown) > 0 {
-		for _, item := range todo.Breakdown {
+	if data, ok := s.cache.Get(ctx, fmt.Sprint("todo-", todoID)); ok {
+		for _, item := range data {
 			fmt.Fprintf(writer, "data: %s\n\n", item)
 			flusher.Flush()
 		}
 		return nil
+	}
+
+	todo, err := s.repository.FindByID(ctx, todoID)
+	if err != nil {
+		return err
 	}
 
 	jsonData, _ := json.MarshalIndent(todo, "", "  ")
@@ -143,13 +151,6 @@ func (s *service) BreakdownTask(
 		},
 	)
 
-	todo.Breakdown = result
-
-	_, err = s.repository.Update(ctx, todoID, bson.M{
-		"breakdown": todo.Breakdown,
-	})
-	if err != nil {
-		return err
-	}
+	s.cache.Set(ctx, fmt.Sprint("todo-", todoID), result, 15*time.Minute)
 	return nil
 }

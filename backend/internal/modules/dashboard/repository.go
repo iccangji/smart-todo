@@ -1,11 +1,11 @@
 package dashboard
 
 import (
-	"backend/internal/database"
 	"context"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 type Repository interface {
@@ -13,10 +13,14 @@ type Repository interface {
 	GetTodosPerDay(ctx context.Context) ([]TodosPerDayResponse, error)
 }
 
-type repository struct{}
+type repository struct {
+	db *mongo.Database
+}
 
-func NewRepository() Repository {
-	return &repository{}
+func NewRepository(db *mongo.Database) Repository {
+	return &repository{
+		db: db,
+	}
 }
 
 func (r *repository) GetSummary(
@@ -37,7 +41,7 @@ func (r *repository) GetSummary(
 		0,
 		-int(now.Weekday()),
 	)
-	collection := database.DB.Collection("todos")
+	collection := r.db.Collection("todos")
 	pipeline := []bson.M{
 		{
 			"$group": bson.M{
@@ -276,7 +280,7 @@ func (r *repository) GetSummary(
 func (r *repository) GetTodosPerDay(
 	ctx context.Context,
 ) ([]TodosPerDayResponse, error) {
-	collection := database.DB.Collection("todos")
+	collection := r.db.Collection("todos")
 	pipeline := []bson.M{
 		{
 			"$group": bson.M{

@@ -5,10 +5,9 @@ import (
 	"strings"
 	"time"
 
-	"backend/internal/database"
-
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
@@ -20,10 +19,14 @@ type Repository interface {
 	Delete(ctx context.Context, id string) error
 }
 
-type repository struct{}
+type repository struct {
+	db *mongo.Database
+}
 
-func NewRepository() Repository {
-	return &repository{}
+func NewRepository(db *mongo.Database) Repository {
+	return &repository{
+		db: db,
+	}
 }
 
 func (r *repository) collection() string {
@@ -34,7 +37,7 @@ func (r *repository) Create(ctx context.Context, todo *Todo) (*Todo, error) {
 	todo.CreatedAt = time.Now()
 	todo.UpdatedAt = time.Now()
 
-	result, err := database.DB.
+	result, err := r.db.
 		Collection(r.collection()).
 		InsertOne(ctx, todo)
 
@@ -49,7 +52,7 @@ func (r *repository) FindAll(
 ) ([]Todo, int64, error) {
 	var todos []Todo
 
-	collection := database.DB.
+	collection := r.db.
 		Collection(r.collection())
 
 	filter := bson.M{}
@@ -129,7 +132,7 @@ func (r *repository) FindByID(ctx context.Context, id string) (*Todo, error) {
 
 	var todo Todo
 
-	err = database.DB.
+	err = r.db.
 		Collection(r.collection()).
 		FindOne(ctx, bson.M{
 			"_id": objectID,
@@ -152,7 +155,7 @@ func (r *repository) Update(ctx context.Context, id string, payload bson.M) (*To
 	payload["updated_at"] = time.Now()
 	after := options.After
 	var updated Todo
-	err = database.DB.
+	err = r.db.
 		Collection(r.collection()).
 		FindOneAndUpdate(
 			ctx,
@@ -182,7 +185,7 @@ func (r *repository) Delete(ctx context.Context, id string) error {
 		return err
 	}
 
-	_, err = database.DB.
+	_, err = r.db.
 		Collection(r.collection()).
 		DeleteOne(ctx, bson.M{
 			"_id": objectID,

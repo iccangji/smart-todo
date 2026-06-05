@@ -2,6 +2,7 @@ package dashboard
 
 import (
 	"backend/internal/ai"
+	"backend/internal/infra/cache"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -10,18 +11,20 @@ import (
 	"time"
 )
 
+const summaryCacheKey = "todos-summary"
+
 type Service interface {
 	GetSummary(ctx context.Context) (*SummaryResponse, error)
 	GetTodosPerDay(ctx context.Context) ([]TodosPerDayResponse, error)
-	Summarize(ctx context.Context, cacheKey string, writer io.Writer, flusher http.Flusher) error
+	Summarize(ctx context.Context, writer io.Writer, flusher http.Flusher) error
 }
 
 type service struct {
 	repository Repository
-	cache      Cache
+	cache      cache.Cache
 }
 
-func NewService(repository Repository, cache Cache) Service {
+func NewService(repository Repository, cache cache.Cache) Service {
 	return &service{
 		repository: repository,
 		cache:      cache,
@@ -42,12 +45,12 @@ func (s *service) GetTodosPerDay(
 
 func (s *service) Summarize(
 	ctx context.Context,
-	cacheKey string,
 	writer io.Writer,
 	flusher http.Flusher,
 ) error {
 	if s.cache != nil {
-		if data, ok := s.cache.Get(cacheKey); ok {
+		if data, ok := s.cache.Get(ctx, summaryCacheKey); ok {
+			fmt.Println("Retrieved from cache", data)
 			for _, item := range data {
 				fmt.Fprintf(writer, "data: %s\n\n", item)
 				flusher.Flush()
@@ -72,7 +75,7 @@ func (s *service) Summarize(
 			result = append(result, content)
 		},
 	)
-	s.cache.Set(cacheKey, result, 15*time.Minute)
+	s.cache.Set(ctx, summaryCacheKey, result, 15*time.Minute)
 
 	return nil
 }

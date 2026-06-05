@@ -1,7 +1,6 @@
 package auth
 
 import (
-	"backend/internal/database"
 	"context"
 	"errors"
 	"time"
@@ -17,10 +16,14 @@ type Repository interface {
 	FindByID(ctx context.Context, userID string) (*User, error)
 }
 
-type repository struct{}
+type repository struct {
+	db *mongo.Database
+}
 
-func NewRepository() Repository {
-	return &repository{}
+func NewRepository(db *mongo.Database) Repository {
+	return &repository{
+		db: db,
+	}
 }
 
 func (r *repository) collection() string {
@@ -33,7 +36,7 @@ func (r *repository) Create(
 ) error {
 	user.CreatedAt = time.Now()
 
-	result, err := database.DB.
+	result, err := r.db.
 		Collection(r.collection()).
 		InsertOne(ctx, user)
 
@@ -54,7 +57,7 @@ func (r *repository) FindByEmail(
 	email string,
 ) (*User, error) {
 	var user User
-	err := database.DB.
+	err := r.db.
 		Collection(r.collection()).
 		FindOne(ctx, bson.M{
 			"email": email,
@@ -78,7 +81,7 @@ func (r *repository) FindByID(
 		return nil, err
 	}
 
-	err = database.DB.
+	err = r.db.
 		Collection(r.collection()).
 		FindOne(ctx, bson.M{
 			"_id": objID,
