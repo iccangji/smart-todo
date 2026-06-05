@@ -37,8 +37,8 @@ func (h *Handler) GetSummary(c *gin.Context) {
 
 }
 
-func (h *Handler) GetTodosPerDay(c *gin.Context) {
-	data, err := h.service.GetTodosPerDay(
+func (h *Handler) GetThisWeekTodos(c *gin.Context) {
+	data, err := h.service.GetThisWeekTodos(
 		c.Request.Context(),
 	)
 

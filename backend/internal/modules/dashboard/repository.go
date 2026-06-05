@@ -10,7 +10,7 @@ import (
 
 type Repository interface {
 	GetSummary(ctx context.Context) (*SummaryResponse, error)
-	GetTodosPerDay(ctx context.Context) ([]TodosPerDayResponse, error)
+	GetThisWeekTodos(ctx context.Context) (*ThisWeekTodosResponse, error)
 }
 
 type repository struct {
@@ -277,57 +277,95 @@ func (r *repository) GetSummary(
 	}, nil
 }
 
-func (r *repository) GetTodosPerDay(
+func (r *repository) GetThisWeekTodos(
 	ctx context.Context,
-) ([]TodosPerDayResponse, error) {
-	collection := r.db.Collection("todos")
+) (*ThisWeekTodosResponse, error) {
+	matchStage := bson.M{
+		"$match": bson.M{
+			"created_at": bson.M{
+				"$gte": time.Now().AddDate(0, 0, -7),
+			},
+		},
+	}
+
+	sortStage := bson.M{
+		"$sort": bson.M{
+			"created_at": -1,
+		},
+	}
+
+	groupStage := bson.M{
+		"$group": bson.M{
+			"_id": bson.M{
+				"$dateToString": bson.M{
+					"format": "%Y-%m-%d",
+					"date":   "$created_at",
+				},
+			},
+			"todos": bson.M{
+				"$push": bson.M{
+					"id":         "$_id",
+					"title":      "$title",
+					"completed":  "$completed",
+					"priority":   "$priority",
+					"created_at": "$created_at",
+				},
+			},
+		},
+	}
+
+	sortGroup := bson.M{
+		"$sort": bson.M{
+			"_id": -1,
+		},
+	}
+
 	pipeline := []bson.M{
-		{
-			"$group": bson.M{
-				"_id": bson.M{
-					"$dateToString": bson.M{
-						"format": "%Y-%m-%d",
-						"date":   "$created_at",
-					},
-				},
-
-				"count": bson.M{
-					"$sum": 1,
-				},
-			},
-		},
-
-		{
-			"$sort": bson.M{
-				"_id": 1,
-			},
-		},
+		matchStage,
+		sortStage,
+		groupStage,
+		sortGroup,
 	}
-	cursor, err := collection.Aggregate(
-		ctx,
-		pipeline,
-	)
+
+	cursor, err := r.db.Collection("todos").Aggregate(ctx, pipeline)
 	if err != nil {
-		return nil, err
+		return &ThisWeekTodosResponse{}, err
 	}
-
 	defer cursor.Close(ctx)
 
-	var rawResults []bson.M
-
-	if err := cursor.All(ctx, &rawResults); err != nil {
-		return nil, err
+	type rawGroup struct {
+		ID    string `bson:"_id"`
+		Todos []Todo `bson:"todos"`
 	}
 
-	var results []TodosPerDayResponse
-
-	for _, item := range rawResults {
-
-		results = append(results, TodosPerDayResponse{
-			Date:  item["_id"].(string),
-			Count: item["count"].(int32),
-		})
+	var results []rawGroup
+	if err := cursor.All(ctx, &results); err != nil {
+		return &ThisWeekTodosResponse{}, err
 	}
 
-	return results, nil
+	var dayTodos []DayTodo
+
+	for _, r := range results {
+		day := DayTodo{
+			Date: r.ID,
+		}
+
+		for _, t := range r.Todos {
+			day.Todos = append(day.Todos, Todo{
+				ID:        t.ID,
+				Title:     t.Title,
+				Completed: t.Completed,
+				Priority:  t.Priority,
+				CreatedAt: t.CreatedAt,
+			})
+		}
+
+		dayTodos = append(dayTodos, day)
+	}
+
+	response := &ThisWeekTodosResponse{
+		Days: dayTodos,
+	}
+
+	return response, nil
 }

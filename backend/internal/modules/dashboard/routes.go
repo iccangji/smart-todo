@@ -9,6 +9,6 @@ func RegisterRoutes(r *gin.Engine, m *Module) {
 	{
 		api.GET("/summary", m.Handler.GetSummary)
 		api.GET("/summary/ai", m.Handler.Summarize)
-		api.GET("/todos-per-day", m.Handler.GetTodosPerDay)
+		api.GET("/this-week-todos", m.Handler.GetThisWeekTodos)
 	}
 }

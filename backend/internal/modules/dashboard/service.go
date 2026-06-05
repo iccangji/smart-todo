@@ -15,7 +15,7 @@ const summaryCacheKey = "todos-summary"
 
 type Service interface {
 	GetSummary(ctx context.Context) (*SummaryResponse, error)
-	GetTodosPerDay(ctx context.Context) ([]TodosPerDayResponse, error)
+	GetThisWeekTodos(ctx context.Context) (*ThisWeekTodosResponse, error)
 	Summarize(ctx context.Context, writer io.Writer, flusher http.Flusher) error
 }
 
@@ -37,10 +37,10 @@ func (s *service) GetSummary(
 	return s.repository.GetSummary(ctx)
 }
 
-func (s *service) GetTodosPerDay(
+func (s *service) GetThisWeekTodos(
 	ctx context.Context,
-) ([]TodosPerDayResponse, error) {
-	return s.repository.GetTodosPerDay(ctx)
+) (*ThisWeekTodosResponse, error) {
+	return s.repository.GetThisWeekTodos(ctx)
 }
 
 func (s *service) Summarize(

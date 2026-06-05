@@ -16,7 +16,11 @@ type SummaryResponse struct {
 	CompletedThisWeek    int32   `json:"completed_this_week"`
 }
 
-type TodosPerDayResponse struct {
+type DayTodo struct {
 	Date  string `json:"date"`
-	Count int32  `json:"count"`
+	Todos []Todo `json:"todos"`
+}
+
+type ThisWeekTodosResponse struct {
+	Days []DayTodo `json:"days"`
 }
