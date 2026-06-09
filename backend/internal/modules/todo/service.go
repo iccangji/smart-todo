@@ -16,8 +16,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-const summaryCacheKey = "todos-summary"
-
 type Service interface {
 	Create(ctx context.Context, userID string, req CreateTodoRequest) (*Todo, error)
 	GetAll(ctx context.Context, query GetTodosQuery) ([]Todo, int64, error)
@@ -32,6 +30,8 @@ type Service interface {
 		writer io.Writer,
 		flusher http.Flusher,
 	) error
+
+	InvalidateCache(ctx context.Context, todoID *string)
 }
 
 type service struct {
@@ -65,7 +65,7 @@ func (s *service) Create(
 		Priority:    req.Priority,
 	}
 
-	s.cache.Delete(ctx, summaryCacheKey)
+	s.InvalidateCache(ctx, nil)
 	return s.repository.Create(ctx, todo)
 }
 
@@ -108,14 +108,12 @@ func (s *service) Update(ctx context.Context, id string, req UpdateTodoRequest) 
 		}
 	}
 
-	s.cache.Delete(ctx, fmt.Sprintf("todo-%s", id))
-	s.cache.Delete(ctx, summaryCacheKey)
+	s.InvalidateCache(ctx, &id)
 	return s.repository.Update(ctx, id, payload)
 }
 
 func (s *service) Delete(ctx context.Context, id string) error {
-	s.cache.Delete(ctx, fmt.Sprintf("todo-%s", id))
-	s.cache.Delete(ctx, summaryCacheKey)
+	s.InvalidateCache(ctx, &id)
 	return s.repository.Delete(ctx, id)
 }
 
@@ -125,8 +123,9 @@ func (s *service) BreakdownTask(
 	writer io.Writer,
 	flusher http.Flusher,
 ) error {
-	if data, ok := s.cache.Get(ctx, fmt.Sprint("todo-", todoID)); ok {
-		for _, item := range data {
+	var taskBreakdownResult []string
+	if ok := s.cache.Get(ctx, fmt.Sprint(cache.TodoBreakdownCacheKey, todoID), &taskBreakdownResult); ok {
+		for _, item := range taskBreakdownResult {
 			fmt.Fprintf(writer, "data: %s\n\n", item)
 			flusher.Flush()
 		}
@@ -151,6 +150,15 @@ func (s *service) BreakdownTask(
 		},
 	)
 
-	s.cache.Set(ctx, fmt.Sprint("todo-", todoID), result, 15*time.Minute)
+	s.cache.Set(ctx, fmt.Sprint(cache.TodoBreakdownCacheKey, todoID), result, 15*time.Minute)
 	return nil
+}
+
+func (s *service) InvalidateCache(ctx context.Context, todoID *string) {
+	if todoID != nil {
+		s.cache.Delete(ctx, fmt.Sprint(cache.TodoBreakdownCacheKey, *todoID))
+	}
+	s.cache.Delete(ctx, cache.SummaryCacheKey)
+	s.cache.Delete(ctx, cache.DashboardSummaryCacheKey)
+	s.cache.Delete(ctx, cache.DashboardThisWeekTodosCacheKey)
 }

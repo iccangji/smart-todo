@@ -11,8 +11,6 @@ import (
 	"time"
 )
 
-const summaryCacheKey = "todos-summary"
-
 type Service interface {
 	GetSummary(ctx context.Context) (*SummaryResponse, error)
 	GetThisWeekTodos(ctx context.Context) (*ThisWeekTodosResponse, error)
@@ -34,13 +32,32 @@ func NewService(repository Repository, cache cache.Cache) Service {
 func (s *service) GetSummary(
 	ctx context.Context,
 ) (*SummaryResponse, error) {
-	return s.repository.GetSummary(ctx)
+	var summaryDashboard SummaryResponse
+	if ok := s.cache.Get(ctx, cache.DashboardSummaryCacheKey, &summaryDashboard); ok {
+		return &summaryDashboard, nil
+	}
+	summary, err := s.repository.GetSummary(ctx)
+	if err != nil {
+		return nil, err
+	}
+	_ = s.cache.Set(ctx, cache.DashboardSummaryCacheKey, summary, 15*time.Minute)
+	return summary, nil
+
 }
 
 func (s *service) GetThisWeekTodos(
 	ctx context.Context,
 ) (*ThisWeekTodosResponse, error) {
-	return s.repository.GetThisWeekTodos(ctx)
+	var thisWeekTodosDashboard ThisWeekTodosResponse
+	if ok := s.cache.Get(ctx, cache.DashboardThisWeekTodosCacheKey, &thisWeekTodosDashboard); ok {
+		return &thisWeekTodosDashboard, nil
+	}
+	thisWeekTodos, err := s.repository.GetThisWeekTodos(ctx)
+	if err != nil {
+		return nil, err
+	}
+	_ = s.cache.Set(ctx, cache.DashboardThisWeekTodosCacheKey, thisWeekTodos, 15*time.Minute)
+	return thisWeekTodos, nil
 }
 
 func (s *service) Summarize(
@@ -48,10 +65,11 @@ func (s *service) Summarize(
 	writer io.Writer,
 	flusher http.Flusher,
 ) error {
+	var summarizeResult []string
 	if s.cache != nil {
-		if data, ok := s.cache.Get(ctx, summaryCacheKey); ok {
-			fmt.Println("Retrieved from cache", data)
-			for _, item := range data {
+		if ok := s.cache.Get(ctx, cache.SummaryCacheKey, &summarizeResult); ok {
+			fmt.Println("Retrieved from cache", cache.SummaryCacheKey)
+			for _, item := range summarizeResult {
 				fmt.Fprintf(writer, "data: %s\n\n", item)
 				flusher.Flush()
 			}
@@ -75,7 +93,7 @@ func (s *service) Summarize(
 			result = append(result, content)
 		},
 	)
-	s.cache.Set(ctx, summaryCacheKey, result, 15*time.Minute)
+	s.cache.Set(ctx, cache.SummaryCacheKey, result, 15*time.Minute)
 
 	return nil
 }

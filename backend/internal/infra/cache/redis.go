@@ -9,8 +9,8 @@ import (
 )
 
 type Cache interface {
-	Get(ctx context.Context, key string) ([]string, bool)
-	Set(ctx context.Context, key string, value []string, ttl time.Duration)
+	Get(ctx context.Context, key string, dest any) bool
+	Set(ctx context.Context, key string, value any, ttl time.Duration) error
 	Delete(ctx context.Context, key string)
 }
 
@@ -29,27 +29,27 @@ func ConnectRedis(ctx context.Context, addr string, db int) *RedisCache {
 	}
 }
 
-func (r *RedisCache) Get(ctx context.Context, key string) ([]string, bool) {
-
+func (r *RedisCache) Get(ctx context.Context, key string, dest any) bool {
 	val, err := r.client.Get(ctx, key).Result()
 	if err != nil {
-		return nil, false
+		return false
 	}
 
-	var data []string
-	err = json.Unmarshal([]byte(val), &data)
+	err = json.Unmarshal([]byte(val), dest)
 	if err != nil {
-		return nil, false
+		return false
 	}
 
-	return data, true
+	return true
 }
 
-func (r *RedisCache) Set(ctx context.Context, key string, value []string, ttl time.Duration) {
-
-	bytes, _ := json.Marshal(value)
-
-	r.client.Set(ctx, key, bytes, ttl)
+func (r *RedisCache) Set(ctx context.Context, key string, value any, ttl time.Duration) error {
+	data, err := json.Marshal(value)
+	if err != nil {
+		return err
+	}
+	r.client.Set(ctx, key, data, ttl)
+	return nil
 }
 
 func (r *RedisCache) Delete(ctx context.Context, key string) {
