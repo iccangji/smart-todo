@@ -94,3 +94,16 @@ func (h *Handler) Summarize(c *gin.Context) {
 		flusher.Flush()
 	}
 }
+
+func (h *Handler) GenerateDailyRecommendation(c *gin.Context) {
+	recommendation, err := h.service.GenerateDailyRecommendation(c.Request.Context())
+
+	if err != nil {
+		response.Error(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	response.SuccessWithData(c, http.StatusOK, DailyRecommendationMessage{
+		Message: recommendation,
+	})
+}

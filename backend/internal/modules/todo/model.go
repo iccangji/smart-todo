@@ -26,3 +26,9 @@ type Todo struct {
 	UpdatedAt   time.Time          `bson:"updated_at" json:"updated_at"`
 	CompletedAt *time.Time         `bson:"completed_at,omitempty" json:"completed_at,omitempty"`
 }
+
+type DailyRecommendation struct {
+	Date        string    `bson:"date"`
+	Message     string    `bson:"message"`
+	GeneratedAt time.Time `bson:"generated_at"`
+}

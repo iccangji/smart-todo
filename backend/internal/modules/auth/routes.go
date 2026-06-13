@@ -5,7 +5,6 @@ import (
 )
 
 func RegisterRoutes(r *gin.Engine, m *Module) {
-
 	api := r.Group("/api/auth")
 	{
 		api.POST("/register", m.Handler.Register)

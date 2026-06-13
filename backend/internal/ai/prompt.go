@@ -7,6 +7,7 @@ type AiFeatures int16
 const (
 	Breakdown AiFeatures = iota // 0
 	Summarize
+	Recommendation
 )
 
 func GeneratePrompt(feature AiFeatures, data string) string {
@@ -16,6 +17,11 @@ func GeneratePrompt(feature AiFeatures, data string) string {
 You are a productivity assistant.
 
 Break down the given todo into high-level, general, and practical actionable steps.
+Priority: 
+Low = 0
+Medium = 1
+High = 2
+Urgent = 3
 
 Important rules:
 - Do NOT assume hidden or private context not present in the data.
@@ -36,8 +42,15 @@ You are a productivity assistant.
 
 Analyze the following task summary data and provide a concise, actionable productivity insight.
 
+TODO: Explain priority level in the prompt
+Priority: 
+Low = 0
+Medium = 1
+High = 2
+Urgent = 3
+
 Rules:
-- Return plain text only
+- Return paragraphs plain text only
 - Maximum 3 short paragraphs
 - Focus on insights, not raw numbers
 - Highlight urgency, momentum, and workload balance
@@ -47,6 +60,30 @@ Rules:
 Task summary data:
 %s
 `, data)
+	case Recommendation:
+		return fmt.Sprintf(`
+You are a productivity coach.
+
+Analyze the user's todo statistics and generate a short daily recommendation message.
+Priority: 
+Low = 0
+Medium = 1
+High = 2
+Urgent = 3
+
+Rules:
+- Maximum 16 words.
+- Be practical and encouraging.
+- Focus on priorities and momentum.
+- Do not mention percentages excessively.
+- Give one clear action for today.
+- Do not use markdown.
+
+Task summary data:
+%s
+`,
+			data,
+		)
 	default:
 		return ""
 	}

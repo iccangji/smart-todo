@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -15,6 +16,8 @@ type Service interface {
 	GetSummary(ctx context.Context) (*SummaryResponse, error)
 	GetThisWeekTodos(ctx context.Context) (*ThisWeekTodosResponse, error)
 	Summarize(ctx context.Context, writer io.Writer, flusher http.Flusher) error
+	GenerateDailyRecommendation(ctx context.Context) (string, error)
+	InvalidateRecommendationCache(ctx context.Context)
 }
 
 type service struct {
@@ -96,4 +99,50 @@ func (s *service) Summarize(
 	s.cache.Set(ctx, cache.SummaryCacheKey, result, 15*time.Minute)
 
 	return nil
+}
+
+func (s *service) GenerateDailyRecommendation(
+	ctx context.Context,
+) (string, error) {
+	var summarizeResult string
+	if s.cache != nil {
+		if ok := s.cache.Get(ctx, cache.DailyRecommendationCacheKey, &summarizeResult); ok {
+			fmt.Println("Retrieved from cache", cache.SummaryCacheKey)
+			return summarizeResult, nil
+		}
+	}
+	summary, err := s.repository.GetSummary(ctx)
+	if err != nil {
+		return "", err
+	}
+
+	jsonData, _ := json.MarshalIndent(summary, "", "  ")
+
+	var result []string
+	err = ai.FetchResponse(
+		ai.Recommendation,
+		jsonData,
+		func(content string) {
+			result = append(result, content)
+		},
+	)
+
+	if err != nil {
+		return "", err
+	}
+
+	fmt.Println("Recommendation: ", strings.Join(result, ""))
+
+	s.cache.Set(ctx,
+		cache.DailyRecommendationCacheKey,
+		strings.Join(result, ""),
+		24*time.Hour,
+	)
+
+	return strings.Join(result, ""), nil
+}
+
+func (s *service) InvalidateRecommendationCache(ctx context.Context) {
+	s.cache.Delete(ctx, cache.DailyRecommendationCacheKey)
+	fmt.Println("Daily recommendation cache deleted.")
 }

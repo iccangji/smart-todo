@@ -24,3 +24,7 @@ type DayTodo struct {
 type ThisWeekTodosResponse struct {
 	Days []DayTodo `json:"days"`
 }
+
+type DailyRecommendationMessage struct {
+	Message string `json:"message"`
+}
