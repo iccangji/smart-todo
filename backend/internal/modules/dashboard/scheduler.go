@@ -23,7 +23,7 @@ func dailyRecommendation(ctx context.Context, service Service) {
 				now.Year(),
 				now.Month(),
 				now.Day(),
-				13, 40, 0, 0,
+				6, 0, 0, 0,
 				now.Location(),
 			)
 
