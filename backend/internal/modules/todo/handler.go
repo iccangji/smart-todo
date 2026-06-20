@@ -1,6 +1,8 @@
 package todo
 
 import (
+	"fmt"
+	"math"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -26,7 +28,7 @@ func (h *Handler) Create(c *gin.Context) {
 		return
 	}
 
-	todo, err := h.service.Create(c.Request.Context(), req)
+	todo, err := h.service.Create(c.Request.Context(), c.GetString("user_id"), req)
 
 	if err != nil {
 		response.Error(c, http.StatusInternalServerError, err.Error())
@@ -37,14 +39,31 @@ func (h *Handler) Create(c *gin.Context) {
 }
 
 func (h *Handler) GetAll(c *gin.Context) {
-	todos, err := h.service.GetAll(c.Request.Context())
+	var query GetTodosQuery
+	query.Normalize()
+
+	if err := c.ShouldBind(&query); err != nil {
+		response.Error(c, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	todos, total, err := h.service.GetAll(c.Request.Context(), query)
+	totalPages := int(math.Ceil(float64(total) / float64(query.Limit)))
 
 	if err != nil {
 		response.Error(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	response.SuccessWithData(c, http.StatusOK, todos)
+	response.SucessWithPagination(c, http.StatusOK, response.PaginatedResponse{
+		Data: todos,
+		Meta: response.Meta{
+			Page:       query.Page,
+			Limit:      query.Limit,
+			Total:      int(total),
+			TotalPages: totalPages,
+		},
+	})
 }
 
 func (h *Handler) GetByID(c *gin.Context) {
@@ -91,4 +110,46 @@ func (h *Handler) Delete(c *gin.Context) {
 	}
 
 	response.SuccessWithMessage(c, http.StatusOK, "Todo deleted")
+}
+
+func (h *Handler) Breakdown(c *gin.Context) {
+	id := c.Param("id")
+	c.Writer.Header().Set(
+		"Content-Type",
+		"text/event-stream",
+	)
+
+	c.Writer.Header().Set(
+		"Cache-Control",
+		"no-cache",
+	)
+
+	c.Writer.Header().Set(
+		"Connection",
+		"keep-alive",
+	)
+	flusher, ok := c.Writer.(http.Flusher)
+
+	if !ok {
+		response.Error(c, http.StatusInternalServerError, "stream unsupported")
+		return
+	}
+
+	err := h.service.BreakdownTask(
+		c.Request.Context(),
+		id,
+		c.Writer,
+		flusher,
+	)
+
+	if err != nil {
+
+		fmt.Fprintf(
+			c.Writer,
+			"data: error: %s\n\n",
+			err.Error(),
+		)
+
+		flusher.Flush()
+	}
 }

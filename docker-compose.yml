@@ -1,13 +1,25 @@
 services:
   # Still in development
-  # smart-todo-backend:
-  #   build:
-  #     context: ./backend
-  #     dockerfile: Dockerfile
-  #   ports:
-  #     - "8000:8000"
-  #   env_file:
-  #     - ./backend/.env
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: dev
+    container_name: backend
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./backend/.env
+    environment:
+      - GO_ENV=development
+    volumes:
+      - ./:/workspace:cached
+      - gomodcache:/go/pkg/mod
+      - gobuildcache:/root/.cache/go-build
+    networks:
+      - smart-todo
+    working_dir: /workspace/backend
+    command: sleep infinity
 
   mongo:
     image: mongo:6.0
@@ -18,3 +30,25 @@ services:
       - MONGO_INITDB_ROOT_PASSWORD=password
     volumes:
       - ./data/mongo:/data/db
+    networks:
+      - smart-todo
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: ["redis-server", "--appendonly", "yes"]
+    networks:
+      - smart-todo
+
+networks:
+  smart-todo:
+    driver: bridge
+
+volumes:
+  gomodcache:
+  gobuildcache:
+  redis_data:

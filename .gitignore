@@ -1,3 +1,5 @@
 *.env
 /data
+/backend/tmp
+/tmp
 *.todo*
