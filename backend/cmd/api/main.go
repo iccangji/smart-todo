@@ -16,6 +16,7 @@ import (
 	"backend/internal/modules/dashboard"
 	"backend/internal/modules/todo"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
 
@@ -47,6 +48,25 @@ func main() {
 	cache := cache.ConnectRedis(ctx, redisAddr, redisDB)
 
 	r := gin.Default()
+	r.Use(cors.New(cors.Config{
+		AllowOrigins: []string{
+			os.Getenv("FRONTEND_URL"),
+		},
+		AllowMethods: []string{
+			"GET",
+			"POST",
+			"PUT",
+			"DELETE",
+			"OPTIONS",
+		},
+		AllowHeaders: []string{
+			"Origin",
+			"Content-Type",
+			"Authorization",
+		},
+		AllowCredentials: true,
+		MaxAge:           12 * time.Hour,
+	}))
 
 	todoModule := todo.NewModule(db, cache)
 	todo.RegisterRoutes(r, todoModule)
