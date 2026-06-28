@@ -87,7 +87,7 @@ func (s *service) Login(
 	)
 
 	if err != nil {
-		return "", "", err
+		return "", "", errors.New("User or password is incorrect")
 	}
 
 	err = comparePassword(
@@ -96,7 +96,7 @@ func (s *service) Login(
 	)
 
 	if err != nil {
-		return "", "", errors.New("invalid credentials")
+		return "", "", errors.New("User or password is incorrect")
 	}
 
 	accessToken, err := GenerateAccessToken(*user)
