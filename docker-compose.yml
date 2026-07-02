@@ -13,13 +13,31 @@ services:
     environment:
       - GO_ENV=development
     volumes:
-      - ./:/workspace:cached
+      - ./backend:/workspace/backend:cached
       - gomodcache:/go/pkg/mod
       - gobuildcache:/root/.cache/go-build
     networks:
       - smart-todo
     working_dir: /workspace/backend
-    command: sleep infinity
+    command: air
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: dev
+    working_dir: /app/frontend
+    container_name: frontend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app/frontend
+      - ./frontend/node_modules:/app/frontend/node_modules
+    environment:
+      - NODE_ENV=development
+    command: npm run dev -- --host
+    networks:
+      - smart-todo
 
   mongo:
     image: mongo:6.0

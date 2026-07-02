@@ -3,3 +3,4 @@
 /backend/tmp
 /tmp
 *.todo*
+/frontend/node_modules
