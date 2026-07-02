@@ -1,3 +1,5 @@
+import type { Todo } from "./todo";
+
 export interface DashboardSummary {
   total: number;
   completed_count: number;
@@ -15,6 +17,11 @@ export interface DashboardSummary {
   completed_this_week: number;
 }
 
-export interface DailyRecommendation {
-  message: string;
+export interface ThisWeekTodo {
+  days: DailyTodo[];
+}
+
+interface DailyTodo {
+  date: string;
+  todos: Todo[];
 }

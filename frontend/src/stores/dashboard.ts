@@ -1,18 +1,18 @@
 import { defineStore } from "pinia";
 import {
   getSummary,
-  // getDailyRecommendation,
+  getDailyRecommendation,
   getThisWeekTodos,
   // getAISummary,
 } from "../api/dashboard";
+import type { DashboardSummary, ThisWeekTodo } from "../types/dashboard";
 
 export const useDashboardStore = defineStore("dashboard", {
   state: () => ({
-    summary: null as any,
-    recommendation: null as any,
-    thisWeek: [] as any[],
-    aiSummary: null as any,
-
+    summary: null as DashboardSummary | null,
+    aiSummary: null as string | null,
+    thisWeek: null as ThisWeekTodo | null,
+    recommendation: null as string | null,
     loading: false,
   }),
 
@@ -21,17 +21,17 @@ export const useDashboardStore = defineStore("dashboard", {
       this.loading = true;
 
       try {
-        const [summary, week] = await Promise.all([
+        const [summary, recommendation, week] = await Promise.all([
           getSummary(),
-          // getDailyRecommendation(),
+          getDailyRecommendation(),
           getThisWeekTodos(),
           // getAISummary(),
         ]);
 
-        console.log("Summary:", summary.data.data);
+        // console.log("Summary:", week.data.data.days);
 
         this.summary = summary.data.data;
-        // this.recommendation = rec.data.data;
+        this.recommendation = recommendation.data.data.message;
         this.thisWeek = week.data.data;
         // this.aiSummary = ai.data.data;
       } finally {
